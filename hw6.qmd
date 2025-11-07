@@ -1,0 +1,155 @@
+---
+title: "Homework 6"
+author: "Ocean Fan"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+```
+
+### 1.
+a.  
+```{r}
+launches <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/refs/heads/main/data/2019/2019-01-15/launches.csv")
+```
+```{r}
+launches <- launches |>
+  mutate(agency_type = case_when(
+    agency_type == "startup" ~ "private",
+    agency_type == "state" ~ "state",
+    agency_type == "private" ~ "private"
+    )
+  )
+```
+b.
+```{r}
+launches <- launches |>
+  mutate(state_code = case_when(
+    state_code %in% c("RU", "SU") ~ "Russia",
+    TRUE ~ state_code
+    )
+  ) |>
+  mutate(state_code = case_when(
+    state_code %in% c("F", "I", "I-ELDO", "I-ESA") ~ "Europe",
+    TRUE ~ state_code
+    )
+  )
+```
+c.
+```{r}
+launches |>
+  count(state_code, sort = TRUE)
+#the top 6 is Russia, US, Europe, CN, J, IN
+launches <- launches |>
+  mutate(state_code = case_when(
+    state_code %in% c("Russia", "US", "Europe", "CN", "J", "IN") ~ state_code,
+    FALSE ~ "other"
+    )
+  )
+```
+d. 
+```{r}
+launches <- launches |>
+  mutate(state_code = case_when(
+    state_code == "CN" ~ "China",
+    state_code == "US" ~ "USA",
+    state_code == "J" ~ "Japan",
+    state_code == "IN" ~ "India",
+    TRUE ~ state_code
+    )
+  )
+```
+
+### 2. 
+```{r}
+preprints <- readr::read_csv("https://stat220-w23.github.io/materials/data/preprints.csv") %>%
+  filter(between(date, as.Date("2013-10-01"), as.Date("2017-01-01")))
+```
+
+```{r}
+preprints$archive <- factor(preprints$archive, levels = c("bioRxiv", "arXiv q-bio", "PeerJ Preprints"))
+archive_label <- preprints |>
+  group_by(archive) |>
+  filter(date == "2017-01-01")
+preprints |>
+  ggplot(aes(x = date, y = count, color = archive)) +
+  geom_point() +
+  geom_line() +
+  geom_text(data = archive_label, aes(label = archive)) +
+  theme(legend.position = "none")
+```
+
+### 3. 
+```{r}
+approval <- read_csv("https://stat220-w23.github.io/materials/data/approval.csv") 
+```
+a. 
+```{r}
+approval <- approval[, c("country", "president", "net_approval", "gdp", "corruption", "population")]
+```
+b. 
+```{r}
+approval <- approval |>
+  group_by(country)
+approval <- approval[order(approval$corruption),]
+head(approval, 8)
+```
+c. 
+```{r}
+smallest_corruption <- approval[1, ]
+```
+d. 
+```{r}
+approval <- approval[order(approval$net_approval, decreasing = TRUE), ]
+largest_net_approval <- approval[1, ]
+```
+
+###4. 
+```{r}
+approval$GDP_per_capita <- approval$gdp/approval$population
+approval$pop_mil <- approval$population/1000000
+```
+
+###5. 
+```{r}
+load("data/FrontRange.rda")
+load("data/FrontRange2.rda")
+```
+a. 
+```{r}
+precip <- FR[[1]]
+```
+FR is stored in list of lists, all values are seperated into certain data types such as double or int; there is also more information in the FR dataset compare to FR2 (which only have station and column). FR2 is stored in a table. 
+
+b.
+```{r}
+FR2 <- FR2 |>
+  filter(station == "st051401")
+length(FR2$station)
+info <- FR[["info"]]
+nOBs <- info[[4]]
+count <- nOBs[[7]]
+```
+we can see that both dataset returns the value 9399. FR2 is easy to process because we can just distinguish between columns; for FR we have to parse through layers of list and identify the index of the station. 
+
+c. 
+```{r}
+load("data/FrontRange2.rda")
+FR2 <- FR2 |>
+  filter(station == "st051401")|>
+  filter(date <= 1949.999 & date >= 1949.000)|>
+  summarize(a = sum(rain))
+```
+I used FR2 here because we can select the data that we wanted just by doing filter twice. 
+
+d. 
+```{r}
+info <- FR[["info"]]
+stations1 <- info
+station <- names(FR[[1]])
+station_factor <- factor(station)
+stations1$station <- station_factor
+```
+
