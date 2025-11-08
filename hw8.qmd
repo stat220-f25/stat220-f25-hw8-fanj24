@@ -1,0 +1,193 @@
+---
+title: "Homework 8"
+author: "Ocean Fan"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(rvest)
+```
+
+### 1.
+
+```{r}
+compute_sumsq <- function(n){
+  sum <- 0
+  for (i in 1:n) {
+    sum <- sum + i^2
+  }
+  return(sum)
+}
+compute_sumsq(15)
+compute_sumsq(27)
+```
+
+### 2.
+
+a.  
+
+```{r}
+scrape_bomojo <- function(url){
+  movie_table <- read_html(url) |>
+  html_elements("table") |>
+  html_table() |>
+  pluck(1) |>
+  mutate(
+    Gross = parse_number(Gross),
+    Theaters = parse_number(Theaters),
+    `Total Gross` = parse_number(`Total Gross`)
+  ) |>
+  select(-Genre, -Budget, -`Running Time`, -Estimated)
+  movie_table <- janitor::clean_names(movie_table)
+  df <- data.frame(movie_table)
+  return(df)
+}
+scrape_bomojo("https://www.boxofficemojo.com/year/2024/")|>
+  head()
+```
+
+the release date part is a bit easier to apply in part b so I took it off in part a. If we have to do it, then we will do a regex to filter out the only numeric part, which is year, from the url string. b.
+
+```{r}
+scrape_bomojo2 <- function(url){
+  url <- str_glue("https://www.boxofficemojo.com/year/{url}")
+  movie_table <- read_html(url) |>
+  html_elements("table") |>
+  html_table() |>
+  pluck(1) |>
+  mutate(
+    Gross = parse_number(Gross),
+    Theaters = parse_number(Theaters),
+    `Total Gross` = parse_number(`Total Gross`),
+    `Release Date` = lubridate::mdy(str_glue("{`Release Date`} {url}"))
+  ) |>
+  select(-Genre, -Budget, -`Running Time`, -Estimated)
+  movie_table <- janitor::clean_names(movie_table)
+  df <- data.frame(movie_table)
+  return(df)
+}
+scrape_bomojo2(2003) |>
+  head()
+```
+
+### 3.
+
+a.  
+
+```{r}
+library(nycflights13)
+flights <- nycflights13::flights
+filter_severe <- function(flight){
+  flight|>
+    filter(is.na(arr_time) | (dep_delay > 1))
+}
+flights |> filter_severe()
+```
+
+b.  
+
+```{r}
+summarize_severe <- function(flight){
+  num_cancel <- NA
+  num_delay <- NA
+  num_cancel <- flight|>
+    filter(is.na(arr_time)) |>
+    nrow()
+  num_delay <- flight|>
+    filter(dep_delay > 1) |>
+    nrow()
+  summary_table <- tibble(num_delay, num_cancel)
+  return(summary_table)
+}
+flights |> group_by(dest) |> summarize_severe()
+```
+
+c.  
+
+```{r}
+filter_severe <- function(flight, hours){
+  flight|>
+    filter(is.na(arr_time) | (dep_delay > hours))
+}
+flights |> filter_severe(hours = 2)
+```
+
+d.  
+
+```{r}
+weather <- nycflights13::weather
+summarize_weather <- function(weather, temp){
+  weather |>
+  summarize(
+    min = min({{temp}}, na.rm = TRUE),
+    mean = mean({{temp}}, na.rm = TRUE),
+    max = max({{temp}}, na.rm = TRUE)
+    )
+}
+weather |> summarize_weather(temp)
+```
+
+e.  
+
+```{r}
+standardize_time <- function(flight, time){
+  flight|>
+    mutate(new_time = {{time}}%/%60 + {{time}}%/%60/60)
+}
+flights |> standardize_time(sched_dep_time)
+```
+
+### 4.
+
+a.  
+
+```{r}
+commute <- read.csv("http://aloy.rbind.io/data/CommuteAtlanta.csv")
+```
+```{r}
+slice_then_mean <- function(commute){
+  n_row <- nrow(commute)
+  mean <- commute |>
+    slice_sample(n = n_row, replace = TRUE) |>
+    summarize(mean_time = mean(Time))
+  mean <- mean$mean_time[1]
+  return(mean)
+}
+
+bootstrap_1000 <- vector(length = 1000)
+
+for(i in c(1:1000)){
+  bootstrap_1000[i] <- slice_then_mean(commute)
+}
+
+quantile(bootstrap_1000, probs = c(0.025, 0.975))
+
+```
+
+### 5. 
+```{r}
+x <- 0
+y <- 0
+x_step <- vector(length = 100)
+y_step <- vector(length = 100)
+for (i in c(1:100)){
+  coin <- sample(c("heads", "tails"), size = 1)
+  if (coin == "heads") {
+    y <- y + 1
+  }
+  else{
+    y <- y - 1
+  }
+  x <- x + 1
+  x_step[i] <- x
+  y_step[i] <- y
+}
+steps <- data.frame(x_step, y_step)
+ggplot(data = steps, aes(x = x_step, y = y_step))+
+  geom_point() +
+  geom_line()
+```
+
